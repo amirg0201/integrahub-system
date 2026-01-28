@@ -19,6 +19,10 @@
             <h2 class="text-2xl font-semibold mb-4 text-gray-800">📦 Nuevo Pedido</h2>
             <form @submit.prevent="crearPedido">
               <div class="mb-4">
+                <label class="block text-gray-700">JWT (Bearer)</label>
+                <input v-model="form.token" type="text" class="w-full p-2 border rounded mt-1" placeholder="Pega tu token JWT">
+              </div>
+              <div class="mb-4">
                 <label class="block text-gray-700">Cliente ID</label>
                 <input v-model="form.customer_id" type="text" class="w-full p-2 border rounded mt-1" placeholder="CUST-001">
               </div>
@@ -61,7 +65,7 @@
       createApp({
         data() {
           return {
-            form: { customer_id: 'CUST-001', product_id: 'LAPTOP-X1', quantity: 1 },
+            form: { token: '', customer_id: 'CUST-001', product_id: 'LAPTOP-X1', quantity: 1 },
             lastOrder: null,
             logs: []
           }
@@ -70,10 +74,18 @@
           async crearPedido() {
             this.addLog("Iniciando creación de pedido...");
 
+            if (!this.form.token) {
+              this.addLog("❌ Falta token JWT. Pégalo en el formulario.");
+              return;
+            }
+
             try {
               const response = await fetch('http://localhost:8000/orders', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${this.form.token}`
+                },
                 body: JSON.stringify({
                   customer_id: this.form.customer_id,
                   items: [{ product_id: this.form.product_id, quantity: this.form.quantity }]
