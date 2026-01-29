@@ -9,9 +9,8 @@ from routers.orders import router as orders_router
 # --- 1. DEFINICIÓN DEL HEALTH ROUTER (Lo que te faltaba) ---
 health_router = APIRouter(tags=["Health"])
 
-@health_router.get("/health")
+@health_router.get("/health/")
 async def health_check():
-    """Endpoint para verificar que el servicio está vivo (usado por los tests)"""
     return {"status": "ok"}
 
 # --- 2. Configuración de la APP ---

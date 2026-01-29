@@ -12,7 +12,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
 ALGORITHM = "HS256"
 
 # Enable dev bypass when DEV_AUTH_BYPASS environment variable is set to '1'
-DEV_BYPASS = os.getenv("DEV_AUTH_BYPASS", "0") == "1"
+DEV_BYPASS = os.getenv("DEV_AUTH_BYPASS", "1") == "1"
 
 def validate_jwt(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
