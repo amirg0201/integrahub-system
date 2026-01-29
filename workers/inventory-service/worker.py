@@ -104,16 +104,31 @@ async def main():
     connection = await aio_pika.connect_robust(connection_url)
     channel = await connection.channel()
 
-    # Declaramos el exchange y lo guardamos en la variable global
-    EXCHANGE_OBJ = await channel.declare_exchange(
+    # 1. Declarar el Exchange de "Muertos" (DLX)
+    dlx_exchange = await channel.declare_exchange(
+        "dlx.events", aio_pika.ExchangeType.DIRECT
+    )
+
+    # 2. Declarar la Cola de "Muertos" (DLQ)
+    dlq_queue = await channel.declare_queue("q_inventory_dlq", durable=True)
+    await dlq_queue.bind(dlx_exchange, routing_key="dead.inventory")
+
+    # 3. Declarar la Cola Principal CON CONFIGURACIÓN DLQ
+    # Aquí está la magia: arguments conecta la cola normal con la DLQ
+    args = {
+        "x-dead-letter-exchange": "dlx.events",
+        "x-dead-letter-routing-key": "dead.inventory"
+    }
+    
+    exchange = await channel.declare_exchange(
         "integrahub.events", aio_pika.ExchangeType.TOPIC
     )
-    
-    queue = await channel.declare_queue("q_inventory", durable=True)
-    # Solo escuchamos cuando se CREA el pedido
-    await queue.bind(EXCHANGE_OBJ, routing_key="order.created")
 
-    print(' [*] Inventory Worker listo. Esperando pedidos...')
+    # Pasamos 'arguments=args' aquí
+    queue = await channel.declare_queue("q_inventory", durable=True, arguments=args)
+    await queue.bind(exchange, routing_key="order.created")
+
+    print(' [*] Inventory Worker listo (con DLQ activa). Esperando pedidos...')
     await queue.consume(process_order)
     await asyncio.Future()
 
