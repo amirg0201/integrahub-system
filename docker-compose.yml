@@ -1,12 +1,16 @@
 version: '3.8'
 
 services:
+  # ---------------------------------------------------------------------------
+  # 1. INFRAESTRUCTURA: Message Broker (RabbitMQ)
+  # Requisito: Mensajería asíncrona y gestión visual
+  # ---------------------------------------------------------------------------
   rabbitmq:
     image: rabbitmq:3-management
     container_name: integrahub-broker
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"   # Puerto AMQP (Comunicación interna/externa)
+      - "15672:15672" # Management UI (http://localhost:15672)
     environment:
       RABBITMQ_DEFAULT_USER: user
       RABBITMQ_DEFAULT_PASS: password
@@ -18,6 +22,111 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # 2. INFRAESTRUCTURA: Base de Datos (PostgreSQL)
+  # Requisito: Persistencia
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: integrahub-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: integrahub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - integrahub-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d integrahub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 3. CORE: API Gateway + Frontend Host
+  # Requisito: API REST Segura y Demo Portal Web
+  # ---------------------------------------------------------------------------
+  api-gateway:
+    build: ./api-gateway
+    container_name: integrahub-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api-gateway:/app:cached               # Hot-reload del código Python
+      - ./frontend-portal:/app/frontend-portal  # Montaje para servir el HTML/JS
+    environment:
+      - DEV_AUTH_BYPASS=1                       # 0 = Seguridad Activada (Lo correcto para la defensa)
+      - RABBITMQ_HOST=rabbitmq                  # Nombre del servicio de arriba
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    depends_on:
+      rabbitmq:
+        condition: service_healthy              # Espera a que Rabbit esté listo
+    networks:
+      - integrahub-net
+
+  # ---------------------------------------------------------------------------
+  # 4. WORKERS: Inventory Service
+  # Requisito: Procesamiento asíncrono y validación de stock
+  # ---------------------------------------------------------------------------
+  inventory-worker:
+    build: ./workers/inventory-service
+    container_name: integrahub-worker-inventory
+    volumes:
+      - ./workers/inventory-service:/app:cached # Hot-reload del worker
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+      - DB_HOST=postgres
+      - DB_USER=admin
+      - DB_PASS=secretpassword
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - integrahub-net
+
+  # ---------------------------------------------------------------------------
+  # 5. WORKERS: Notification Service (Slack)
+  # Requisito: Notificaciones y conexión a terceros
+  # ---------------------------------------------------------------------------
+  notification-worker:
+    build: ./workers/notification-service
+    container_name: integrahub-worker-notif
+    volumes:
+      - ./workers/notification-service:/app:cached
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+      # URL real de Slack configurada
+      - SLACK_WEBHOOK_URL=''
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - integrahub-net
+
+  # ---------------------------------------------------------------------------
+  # 6. LEGADO: File Watcher (Opcional/Futuro)
+  # Requisito: Integración por archivos
+  # ---------------------------------------------------------------------------
+  # legacy-watcher:
+  #   image: python:3.11-slim
+  #   volumes:
+  #     - legacy_inbox:/data/inbox
+  #   ... (configuración futura)
+
 networks:
   integrahub-net:
     driver: bridge
+
+volumes:
+  postgres_data:
+  legacy_inbox:

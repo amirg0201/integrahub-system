@@ -20,8 +20,16 @@
             <form @submit.prevent="crearPedido">
               <div class="mb-4">
                 <label class="block text-gray-700">JWT (Bearer)</label>
-                <input v-model="form.token" type="text" class="w-full p-2 border rounded mt-1" placeholder="Pega tu token JWT">
+                <input v-model="form.token" :disabled="devBypass" type="text" class="w-full p-2 border rounded mt-1" placeholder="Pega tu token JWT">
               </div>
+
+              <div class="mb-4">
+                <label class="inline-flex items-center text-sm text-gray-700">
+                  <input type="checkbox" v-model="devBypass" class="mr-2">Modo dev — omitir JWT (solo local)
+                </label>
+                <p v-if="devBypass" class="text-xs text-gray-500 mt-1">Se enviará el header <code>X-Dev-User</code> para simular un usuario.</p>
+              </div>
+
               <div class="mb-4">
                 <label class="block text-gray-700">Cliente ID</label>
                 <input v-model="form.customer_id" type="text" class="w-full p-2 border rounded mt-1" placeholder="CUST-001">
@@ -65,6 +73,7 @@
       createApp({
         data() {
           return {
+            devBypass: false,
             form: { token: '', customer_id: 'CUST-001', product_id: 'LAPTOP-X1', quantity: 1 },
             lastOrder: null,
             logs: []
@@ -74,18 +83,19 @@
           async crearPedido() {
             this.addLog("Iniciando creación de pedido...");
 
-            if (!this.form.token) {
-              this.addLog("❌ Falta token JWT. Pégalo en el formulario.");
+            if (!this.devBypass && !this.form.token) {
+              this.addLog("❌ Falta token JWT. Pégalo en el formulario o activa 'Modo dev'.");
               return;
             }
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (!this.devBypass) headers['Authorization'] = `Bearer ${this.form.token}`;
+            else headers['X-Dev-User'] = this.form.customer_id || 'dev';
 
             try {
               const response = await fetch('http://localhost:8000/orders', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${this.form.token}`
-                },
+                headers,
                 body: JSON.stringify({
                   customer_id: this.form.customer_id,
                   items: [{ product_id: this.form.product_id, quantity: this.form.quantity }]
@@ -98,6 +108,7 @@
                 this.lastOrder = data;
                 this.addLog(`✅ Pedido enviado. ID: ${data.order_id}`);
                 this.addLog(`🔗 Correlation: ${data.correlation_id}`);
+                if (this.devBypass) this.addLog('⚠️ Usando DEV BYPASS — no se validó JWT.');
               } else {
                 this.addLog(`❌ Error API: ${data.detail || 'Desconocido'}`);
               }
@@ -105,6 +116,7 @@
               this.addLog(`❌ Error de conexión: Asegúrate que el Backend esté corriendo.`);
             }
           },
+
           addLog(msg) {
             const time = new Date().toLocaleTimeString();
             this.logs.unshift({ time, msg });

@@ -20,20 +20,17 @@ async def process_order(message: aio_pika.IncomingMessage):
 
 
 async def main():
+    rmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
+    rmq_user = os.getenv("RABBITMQ_DEFAULT_USER", "user")
+    rmq_pass = os.getenv("RABBITMQ_DEFAULT_PASS", "password")
+    
+    connection_url = f"amqp://{rmq_user}:{rmq_pass}@{rmq_host}/"
+
+    print(f" [*] Conectando a RabbitMQ en: {rmq_host}...")
+    
     # Conexión
-    connection = await aio_pika.connect_robust("amqp://user:password@localhost/")
+    connection = await aio_pika.connect_robust(connection_url)
     channel = await connection.channel()
-
-    # Declarar Exchange y Cola
-    exchange = await channel.declare_exchange(
-        "integrahub.events", aio_pika.ExchangeType.TOPIC
-    )
-    queue = await channel.declare_queue("q_inventory", durable=True)
-
-    # Binding (Enrutamiento [cite: 45])
-    await queue.bind(exchange, routing_key="order.created")
-
-    print(' [*] Esperando eventos "order.created". Para salir presiona CTRL+C')
 
     # Consumir
     await queue.consume(process_order)
