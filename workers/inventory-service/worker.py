@@ -61,9 +61,9 @@ async def process_order(message: aio_pika.IncomingMessage):
             conn.commit()
             print(f"       ✅ Inventario Reservado.")
 
-            # 2. SIMULAR PAGO
+            # 2. SIMULAR PAGO (Espera 5 segundos sin bloquear el hilo)
             print(f" [2/3] 💳 Procesando pago...")
-            await asyncio.sleep(5) # Usamos await para no bloquear el worker
+            await asyncio.sleep(5) 
             
             # 3. CONFIRMAR
             cur.execute(
@@ -75,29 +75,33 @@ async def process_order(message: aio_pika.IncomingMessage):
             conn.close()
             print(f" [3/3] 🏁 Pedido CONFIRMADO.")
 
-            # --- NUEVO: PUBLICAR EVENTO DE CONFIRMACIÓN (Pub/Sub) ---
+            # --- PUBLICAR EVENTO DE CONFIRMACIÓN (Pub/Sub) ---
             if EXCHANGE_OBJ:
                 event_confirmation = {
                     "event_type": "OrderConfirmed",
                     "data": { "order_id": order_id, "status": "CONFIRMED", "customer_id": customer_id }
                 }
+                # Publicamos a la routing key "order.confirmed"
                 await EXCHANGE_OBJ.publish(
                     aio_pika.Message(body=json.dumps(event_confirmation).encode()),
-                    routing_key="order.confirmed" # <--- Nueva routing key
+                    routing_key="order.confirmed" 
                 )
                 print(f"       📣 Evento 'OrderConfirmed' publicado a RabbitMQ.")
+            else:
+                print(" [!] ERROR CRÍTICO: El objeto Exchange no está inicializado.")
 
         except Exception as e:
-            print(f" [!] Error: {e}")
+            print(f" [!] Error procesando orden: {e}")
 
 async def main():
+    # USAMOS LA VARIABLE GLOBAL
     global EXCHANGE_OBJ
     
     rmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
     rmq_user = os.getenv("RABBITMQ_DEFAULT_USER", "user")
     rmq_pass = os.getenv("RABBITMQ_DEFAULT_PASS", "password")
     
-    time.sleep(5)
+    time.sleep(5) # Espera inicial para asegurar que Postgres esté listo
     init_db()
 
     connection_url = f"amqp://{rmq_user}:{rmq_pass}@{rmq_host}/"
@@ -114,21 +118,24 @@ async def main():
     await dlq_queue.bind(dlx_exchange, routing_key="dead.inventory")
 
     # 3. Declarar la Cola Principal CON CONFIGURACIÓN DLQ
-    # Aquí está la magia: arguments conecta la cola normal con la DLQ
     args = {
         "x-dead-letter-exchange": "dlx.events",
         "x-dead-letter-routing-key": "dead.inventory"
     }
     
-    exchange = await channel.declare_exchange(
+    # --- AQUÍ ESTABA EL ERROR ANTES ---
+    # Asignamos el exchange a la variable GLOBAL
+    EXCHANGE_OBJ = await channel.declare_exchange(
         "integrahub.events", aio_pika.ExchangeType.TOPIC
     )
 
-    # Pasamos 'arguments=args' aquí
+    # Declaramos la cola y la unimos al exchange global
     queue = await channel.declare_queue("q_inventory", durable=True, arguments=args)
-    await queue.bind(exchange, routing_key="order.created")
+    
+    # Escuchamos los eventos de creación ("order.created")
+    await queue.bind(EXCHANGE_OBJ, routing_key="order.created")
 
-    print(' [*] Inventory Worker listo (con DLQ activa). Esperando pedidos...')
+    print(' [*] Inventory Worker LISTO (con DLQ activa). Esperando pedidos...')
     await queue.consume(process_order)
     await asyncio.Future()
 

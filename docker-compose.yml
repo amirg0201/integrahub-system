@@ -58,7 +58,7 @@ services:
       - ./api-gateway:/app:cached               # Hot-reload del código Python
       - ./frontend-portal:/app/frontend-portal  # Montaje para servir el HTML/JS
     environment:
-      - DEV_AUTH_BYPASS=1                       # 0 = Seguridad Activada (Lo correcto para la defensa)
+      - DEV_AUTH_BYPASS=0                       # 0 = Seguridad Activada (Lo correcto para la defensa)
       - RABBITMQ_HOST=rabbitmq                  # Nombre del servicio de arriba
       - RABBITMQ_DEFAULT_USER=user
       - RABBITMQ_DEFAULT_PASS=password
