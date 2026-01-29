@@ -123,6 +123,23 @@ services:
   #     - legacy_inbox:/data/inbox
   #   ... (configuración futura)
 
+# ---------------------------------------------------------------------------
+  # 7. HERRAMIENTA VISUAL: DB Admin (Agregado correctamente)
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer
+    container_name: integrahub-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      # Opcional: Para que el diseño sea más bonito
+      - ADMINER_DESIGN=pepa-linde
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - integrahub-net
+
 networks:
   integrahub-net:
     driver: bridge
@@ -130,17 +147,3 @@ networks:
 volumes:
   postgres_data:
   legacy_inbox:
-
-  # ---------------------------------------------------------------------------
-  # 7. HERRAMIENTA VISUAL: DB Admin (Para la defensa sin consola)
-  # ---------------------------------------------------------------------------
-  adminer:
-    image: adminer
-    container_name: integrahub-adminer
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - integrahub-net
