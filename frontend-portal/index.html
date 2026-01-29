@@ -11,7 +11,7 @@
     <div id="app" class="max-w-4xl mx-auto">
         <header class="mb-8 text-center">
           <h1 class="text-4xl font-bold text-blue-600">IntegraHub 2026</h1>
-          <p class="text-gray-600">Plataforma de Orquestación de Pedidos [cite: 78]</p>
+          <p class="text-gray-600">Plataforma de Orquestación de Pedidos</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -72,24 +72,23 @@
                 <p class="text-sm text-gray-600">Estado consolidado de los componentes</p>
                 <p class="text-xs text-gray-500">Última actualización: <span class="font-mono">{{ status.last_updated || '—' }}</span></p>
               </div>
-              <button @click="fetchStatus" class="bg-gray-100 border p-2 rounded text-sm">Actualizar</button>
+              <button @click="fetchStatus" class="bg-gray-100 border p-2 rounded text-sm hover:bg-gray-200">Actualizar</button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="p-4 border rounded">
                 <p class="text-sm text-gray-600">API Gateway</p>
-                <p :class="status.api === 'ok' ? 'text-green-600' : 'text-red-500'" class="font-bold">{{ status.api || 'unknown' }}</p>
+                <p :class="status.api === 'ok' ? 'text-green-600' : 'text-red-500'" class="font-bold uppercase">{{ status.api || 'unknown' }}</p>
               </div>
               <div class="p-4 border rounded">
                 <p class="text-sm text-gray-600">RabbitMQ</p>
-                <p :class="status.rabbitmq === 'ok' ? 'text-green-600' : 'text-red-500'" class="font-bold">{{ status.rabbitmq || 'unknown' }}</p>
+                <p :class="status.rabbitmq === 'ok' ? 'text-green-600' : 'text-yellow-600'" class="font-bold uppercase">{{ status.rabbitmq || 'unknown' }}</p>
               </div>
               <div class="p-4 border rounded">
                 <p class="text-sm text-gray-600">Workers</p>
-                <p :class="status.workers === 'ok' ? 'text-green-600' : 'text-yellow-600'" class="font-bold">{{ status.workers || 'unknown' }}</p>
+                <p :class="status.workers === 'ok' ? 'text-green-600' : 'text-yellow-600'" class="font-bold uppercase">{{ status.workers || 'unknown' }}</p>
               </div>
             </div>
-
           </div>
         </div>
     </div>
@@ -103,8 +102,19 @@
             devBypass: false,
             form: { token: '', customer_id: 'CUST-001', product_id: 'LAPTOP-X1', quantity: 1 },
             lastOrder: null,
-            logs: []
+            logs: [],
+            // AGREGADO: Objeto status para que el HTML no falle
+            status: {
+                api: 'unknown',
+                rabbitmq: 'unknown',
+                workers: 'unknown',
+                last_updated: ''
+            }
           }
+        },
+        mounted() {
+            // Cargar estado automáticamente al abrir la página
+            this.fetchStatus();
         },
         methods: {
           async crearPedido() {
@@ -136,11 +146,35 @@
                 this.addLog(`✅ Pedido enviado. ID: ${data.order_id}`);
                 this.addLog(`🔗 Correlation: ${data.correlation_id}`);
                 if (this.devBypass) this.addLog('⚠️ Usando DEV BYPASS — no se validó JWT.');
+                // Actualizar estado por si algo cambió
+                this.fetchStatus();
               } else {
                 this.addLog(`❌ Error API: ${data.detail || 'Desconocido'}`);
               }
             } catch (error) {
               this.addLog(`❌ Error de conexión: Asegúrate que el Backend esté corriendo.`);
+            }
+          },
+
+          // AGREGADO: Método para consultar el health check corregido
+          async fetchStatus() {
+            try {
+                // Notar la barra al final "/health/", importante por el cambio que hiciste en el backend
+                const res = await fetch('http://localhost:8000/health/');
+                if (res.ok) {
+                    const data = await res.json();
+                    this.status = {
+                        api: data.api || 'ok', // Asumimos ok si responde
+                        rabbitmq: data.rabbitmq || 'unknown',
+                        workers: data.workers || 'unknown',
+                        last_updated: new Date().toLocaleTimeString()
+                    };
+                } else {
+                    this.status.api = 'error';
+                }
+            } catch (e) {
+                console.error(e);
+                this.status.api = 'offline';
             }
           },
 
