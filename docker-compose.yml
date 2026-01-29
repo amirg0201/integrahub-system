@@ -114,14 +114,26 @@ services:
       - integrahub-net
 
   # ---------------------------------------------------------------------------
-  # 6. LEGADO: File Watcher (Opcional/Futuro)
-  # Requisito: Integración por archivos
+  # 6. LEGADO: File Watcher (Ingesta CSV)
   # ---------------------------------------------------------------------------
-  # legacy-watcher:
-  #   image: python:3.11-slim
-  #   volumes:
-  #     - legacy_inbox:/data/inbox
-  #   ... (configuración futura)
+  legacy-watcher:
+    build: ./workers/legacy-service
+    container_name: integrahub-legacy
+    volumes:
+      - ./workers/legacy-service:/app:cached
+      - ./inbox:/app/inbox
+      - ./processed:/app/processed    # <--- ¡AGREGA ESTO!
+      - ./error:/app/error                # <--- Mapeo de la carpeta "Buzón"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=admin
+      - DB_PASS=secretpassword
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - integrahub-net
 
 # ---------------------------------------------------------------------------
   # 7. HERRAMIENTA VISUAL: DB Admin (Agregado correctamente)

@@ -78,4 +78,6 @@ cython_debug/
 poetry.toml
 .ruff_cache/
 pyrightconfig.json
+.DS_Store
+datosDePrueba/
 ################################
