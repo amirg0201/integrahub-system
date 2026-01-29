@@ -1,3 +1,6 @@
 aio_pika
 requests
 aiohttp
+tenacity
+requests
+circuitbreaker

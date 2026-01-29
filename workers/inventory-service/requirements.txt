@@ -1,3 +1,6 @@
 aio_pika
 asyncio
 psycopg2-binary
+tenacity
+requests
+circuitbreaker
