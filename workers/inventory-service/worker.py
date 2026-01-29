@@ -4,24 +4,21 @@ import json
 import os
 import psycopg2
 import time
+import random
 
-# Configuración de Conexión (Lee las variables de Docker)
+# Configuración DB
 DB_HOST = os.getenv("DB_HOST", "postgres")
 DB_USER = os.getenv("DB_USER", "admin")
 DB_PASS = os.getenv("DB_PASS", "secretpassword")
 DB_NAME = "integrahub"
 
+# Variable global para el exchange (para poder publicar desde la función)
+EXCHANGE_OBJ = None
+
 def get_db_connection():
-    """Intenta conectar a la base de datos con reintentos"""
-    return psycopg2.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASS,
-        dbname=DB_NAME
-    )
+    return psycopg2.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, dbname=DB_NAME)
 
 def init_db():
-    """Crea la tabla si no existe (Migración automática)"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -31,13 +28,15 @@ def init_db():
                 order_id VARCHAR(50) NOT NULL,
                 customer_id VARCHAR(50),
                 status VARCHAR(20),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                amount DECIMAL(10, 2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
         conn.commit()
         cur.close()
         conn.close()
-        print(" [v] Base de datos SQL inicializada correctamente.")
+        print(" [v] Base de datos SQL inicializada.")
     except Exception as e:
         print(f" [!] Esperando a Postgres... ({e})")
 
@@ -48,46 +47,73 @@ async def process_order(message: aio_pika.IncomingMessage):
         order_id = data.get('order_id')
         customer_id = data.get('customer_id')
         
-        print(f" [x] Procesando pedido: {order_id}")
+        print(f" [1/3] 📦 Procesando inventario para: {order_id}")
         
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Insertar en SQL
+            
+            # 1. RESERVAR
             cur.execute(
-                "INSERT INTO orders (order_id, customer_id, status) VALUES (%s, %s, %s)",
-                (order_id, customer_id, 'RESERVED')
+                "INSERT INTO orders (order_id, customer_id, status, amount) VALUES (%s, %s, %s, %s)",
+                (order_id, customer_id, 'RESERVED', random.uniform(100, 500))
+            )
+            conn.commit()
+            print(f"       ✅ Inventario Reservado.")
+
+            # 2. SIMULAR PAGO
+            print(f" [2/3] 💳 Procesando pago...")
+            await asyncio.sleep(5) # Usamos await para no bloquear el worker
+            
+            # 3. CONFIRMAR
+            cur.execute(
+                "UPDATE orders SET status = 'CONFIRMED', updated_at = NOW() WHERE order_id = %s",
+                (order_id,)
             )
             conn.commit()
             cur.close()
             conn.close()
-            print(f" [v] Guardado en PostgreSQL exitosamente.")
+            print(f" [3/3] 🏁 Pedido CONFIRMADO.")
+
+            # --- NUEVO: PUBLICAR EVENTO DE CONFIRMACIÓN (Pub/Sub) ---
+            if EXCHANGE_OBJ:
+                event_confirmation = {
+                    "event_type": "OrderConfirmed",
+                    "data": { "order_id": order_id, "status": "CONFIRMED", "customer_id": customer_id }
+                }
+                await EXCHANGE_OBJ.publish(
+                    aio_pika.Message(body=json.dumps(event_confirmation).encode()),
+                    routing_key="order.confirmed" # <--- Nueva routing key
+                )
+                print(f"       📣 Evento 'OrderConfirmed' publicado a RabbitMQ.")
+
         except Exception as e:
-            print(f" [!] Error guardando en SQL: {e}")
+            print(f" [!] Error: {e}")
 
 async def main():
-    # Variables RabbitMQ
+    global EXCHANGE_OBJ
+    
     rmq_host = os.getenv("RABBITMQ_HOST", "rabbitmq")
     rmq_user = os.getenv("RABBITMQ_DEFAULT_USER", "user")
     rmq_pass = os.getenv("RABBITMQ_DEFAULT_PASS", "password")
     
-    # Inicializar Tabla SQL antes de arrancar
-    # Damos unos segundos para asegurar que Postgres esté listo
-    time.sleep(5) 
+    time.sleep(5)
     init_db()
 
     connection_url = f"amqp://{rmq_user}:{rmq_pass}@{rmq_host}/"
     connection = await aio_pika.connect_robust(connection_url)
     channel = await connection.channel()
 
-    exchange = await channel.declare_exchange(
+    # Declaramos el exchange y lo guardamos en la variable global
+    EXCHANGE_OBJ = await channel.declare_exchange(
         "integrahub.events", aio_pika.ExchangeType.TOPIC
     )
     
     queue = await channel.declare_queue("q_inventory", durable=True)
-    await queue.bind(exchange, routing_key="order.created")
+    # Solo escuchamos cuando se CREA el pedido
+    await queue.bind(EXCHANGE_OBJ, routing_key="order.created")
 
-    print(' [*] Inventory Worker conectado a PostgreSQL. Esperando pedidos...')
+    print(' [*] Inventory Worker listo. Esperando pedidos...')
     await queue.consume(process_order)
     await asyncio.Future()
 
