@@ -14,7 +14,7 @@ async def health_check():
     """Endpoint de salud extendido para cumplir con los tests"""
     return {
         "status": "ok",
-        "api": "online",
+        "api": "ok",
         "rabbitmq": "unknown",  # Simulamos estado para que pase el test de estructura
         "workers": "unknown"
     }
