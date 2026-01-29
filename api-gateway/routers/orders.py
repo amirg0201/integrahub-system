@@ -22,7 +22,7 @@ async def create_order(
         "data": {
             "order_id": order_id,
             "customer_id": order.customer_id,
-            "items": [item.dict() for item in order.items]
+            "items": [item.model_dump() for item in order.items]
         }
     }
 
