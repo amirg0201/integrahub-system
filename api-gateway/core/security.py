@@ -8,7 +8,7 @@ from jose import jwt, JWTError
 # allow missing Authorization header (we'll handle missing case in the validator)
 security = HTTPBearer(auto_error=False)
 
-SECRET_KEY = "super-secret-key"
+SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
 ALGORITHM = "HS256"
 
 # Enable dev bypass when DEV_AUTH_BYPASS environment variable is set to '1'

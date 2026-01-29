@@ -1,0 +1,29 @@
+{
+  "info": {
+    "name": "IntegraHub - Minimal collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create order (dev bypass)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Dev-User", "value": "CUST-1" }
+        ],
+        "body": { "mode": "raw", "raw": "{\"customer_id\":\"CUST-1\",\"items\":[{\"product_id\":\"P1\",\"quantity\":1}]}" },
+        "url": { "raw": "http://localhost:8000/orders", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders"] }
+      }
+    },
+    {
+      "name": "Create order (missing token) -> 401",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\"customer_id\":\"CUST-1\",\"items\":[{\"product_id\":\"P1\",\"quantity\":1}]}" },
+        "url": { "raw": "http://localhost:8000/orders", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["orders"] }
+      }
+    }
+  ]
+}

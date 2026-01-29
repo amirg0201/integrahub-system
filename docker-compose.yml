@@ -106,7 +106,7 @@ services:
       - RABBITMQ_DEFAULT_USER=user
       - RABBITMQ_DEFAULT_PASS=password
       # URL real de Slack configurada
-      - SLACK_WEBHOOK_URL=''
+      - SLACK_WEBHOOK_URL=${SLACK_URL_SECRETA}
     depends_on:
       rabbitmq:
         condition: service_healthy

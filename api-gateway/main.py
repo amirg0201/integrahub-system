@@ -23,6 +23,7 @@ app.add_middleware(
 # --- 2. Rutas de API ---
 # Es importante registrar esto ANTES de montar los archivos estáticos
 app.include_router(orders_router)
+app.include_router(health_router)
 
 # --- 3. Servir Frontend (Solución al error Not Found) ---
 # Detectamos dónde está la carpeta 'frontend-portal' dinámicamente
