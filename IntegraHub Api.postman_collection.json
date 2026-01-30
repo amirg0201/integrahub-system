@@ -1,0 +1,187 @@
+{
+  "info": {
+    "_postman_id": "8e3cd8db-0ac8-4a8d-a7af-27bfc3db0e33",
+    "name": "IntegraHub Api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "39522976"
+  },
+  "item": [
+    {
+      "name": "/orders (Sin Auth)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/orders",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "orders"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "orders (Token Invalido)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2OTY3MzU5N30.6zB_boJmyEJfRlS6iEYAq_fWpCgLS3iOCwc4BKszbRo",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"jurado_defensa_01\",\n  \"items\": [\n    {\n      \"product_id\": \"laptop_gamer_hp\",\n      \"quantity\": 1\n    },\n    {\n      \"product_id\": \"mouse_inalambrico\",\n      \"quantity\": 2\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8000/orders",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "orders"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "orders (Token Valido)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2OTY3MzgzMX0.UpFC7AsyU8OOQYYNILElZN1amhDZOUquEdzuzz7JOoQ",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_id\": \"jurado_defensa_01\",\n  \"items\": [\n    {\n      \"product_id\": \"laptop_gamer_hp\",\n      \"quantity\": 1\n    },\n    {\n      \"product_id\": \"mouse_inalambrico\",\n      \"quantity\": 2\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8000/orders",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "orders"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "token (Error)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "username",
+              "value": "admin",
+              "type": "text",
+              "uuid": "e6fe2aa0-8a38-462f-b9fe-985bc02d6b79"
+            },
+            {
+              "key": "password",
+              "value": "secrets",
+              "type": "text",
+              "uuid": "2bf32c6b-aaa6-42df-8348-cd6a0a9d048c"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "token (Login)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "username",
+              "value": "admin",
+              "type": "text",
+              "uuid": "99c9d7a3-2319-434e-bd6e-bcbe03eadd7e"
+            },
+            {
+              "key": "password",
+              "value": "secret",
+              "type": "text",
+              "uuid": "b0ef028b-2e33-434d-aabf-04c73823f2e5"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/token?username=admin&password=secret",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "token"
+          ],
+          "query": [
+            {
+              "key": "username",
+              "value": "admin"
+            },
+            {
+              "key": "password",
+              "value": "secret"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
